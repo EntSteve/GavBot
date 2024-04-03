@@ -108,18 +108,11 @@ async def art(ctx):
     art_prompt = gavin.paint(formatted_user_prompt)
     await message.edit(content = "Here's your picture", attachments=[discord.File(art_prompt)])
 
-def check_author(ctx):
-    match ctx.author.id:
-        case ".theejuicetm":
-            return True
-        case ".lilpage":
-            return True
-        case"butters4494":
-            return True
-        case".0blivion":
-            return True
-        case _:
-            return False
+@bot.command(name='listen', help='Gavin listens to you.')
+async def listen(ctx):
+    print(ctx)
+    talking = ctx.voice_channel.name
+    await ctx.send(talking)
 
 # Main initialization
 if __name__ == "__main__":

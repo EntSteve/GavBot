@@ -2,11 +2,13 @@ from rich import print
 from rich.console import Console
 from openai_connect import OpenaiConnect
 from image_manager import Painter
-import pygame
+from speech_to_text import SpeechToText
+import os
 
-openai_manager = OpenaiConnect()
+openai_manager = OpenaiConnect("gpt-3.5turbo")
 gav_art = Painter()
 console = Console()
+speech = SpeechToText()
 BACKUP_FILE = "Backups/gavin_backup.txt"
 FINISHED_CONVERSATION = "Backups/gavin_conversation.txt"
 GAVIN_MUSINGS = []
@@ -48,6 +50,7 @@ class Gavin:
         openai_manager.set_character(self.CHARACTER_PROMPT)
 
     def console_conversation(self):
+        using_voice = False
         while True:
             next_prompt = console.input("[blue]What would you like to say to Gavin?\n")
 
@@ -63,6 +66,13 @@ class Gavin:
                 print("[yellow]Painting the comment as an image.")
                 gav_art.make_image_and_open(art_prompt)
                 continue
+            elif next_prompt.lower() == next_prompt.lower() == "voice":
+                using_voice = not using_voice
+                print(f"[yellow]Voice mode {using_voice}.")
+                continue
+            elif next_prompt.lower() == "listen":
+                print(f"[yellow]Listening for mic input.")
+                next_prompt = speech.recognize_from_microphone()
 
             #send message to openai
             response = openai_manager.chat_memory(next_prompt)
@@ -72,22 +82,17 @@ class Gavin:
             with open(BACKUP_FILE, "w") as file:
                 file.write(str(openai_manager.chat_history))
 
-            #OpenAI text to speech file (Replace with something like 11 labs later on)
-            audio_file = openai_manager.make_voice(response)
-            
-            # Play the voice file
-            print(f"[yellow]Playing voice file. Please wait...\n")
-            pygame.init()
-            try:
-                pygame.mixer.music.load(audio_file)
-                pygame.mixer.music.play()
-                while pygame.mixer.music.get_busy() == True:
-                    continue
-            except pygame.error as e:
-                print(f"[red]{e}")
-                print("[red]Error playing voice file. Please check the file and try again.")
-            finally:
-                pygame.quit()
+            #OpenAI text to speech file
+            if using_voice:
+                audio_file_path = openai_manager.make_voice(response)
+                print(f"[yellow]Playing voice file. Please wait...\n")
+                try:
+                    if os.path.exists(audio_file_path):
+                        os.system("start {}".format(audio_file_path))
+                    else:
+                        print("Audio file not found.")
+                except Exception as e:
+                    print(f"Error playing audio: {e}")
     
     def talk_text(self, prompt, using_voice=False):
         if using_voice == False:
@@ -97,7 +102,6 @@ class Gavin:
             prompt += "\nThis response can be no more than 3 paragraphs long."
             response = openai_manager.chat_memory(prompt)
         return response
-
     def talk_audio(self, prompt):
         audio_file = openai_manager.make_voice(prompt)
         return audio_file

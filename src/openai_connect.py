@@ -42,7 +42,6 @@ class OpenaiConnect:
     self.chat_history.append(self.CHARACTER_PROMPT)
 
   def chat(self, prompt=""):
-    #Add in a validation check for the prompt
     chatting = []
     chatting.append(self.CHARACTER_PROMPT)
     chatting.append({"role": "user", "content": prompt})
@@ -60,12 +59,13 @@ class OpenaiConnect:
     return response
   
   def chat_memory(self, prompt=""):
-    #Add in a validation check for the prompt
     self.chat_history.append({"role": "user", "content": prompt})
-    if num_tokens_from_messages(self.chat_history) > 8000:
-      self.chat_history.pop(1)
-      print("The length of this chat question is too large for the GPT model")
-      return
+    if num_tokens_from_messages(self.chat_history) > 7000:
+      self.chat_history.pop()
+      print(f"[purple]\nThe length of this chat question is too large for the GPT model conversation being condensed.\n")
+      self.summary()
+      self.chat_history.append({"role": "user", "content": prompt})
+      
     completion = self.client.chat.completions.create(
       model=self.model,
       messages=self.chat_history,
@@ -96,7 +96,19 @@ class OpenaiConnect:
       input=prompt
     )
     current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    file_name = f"Audio/voice_{current_datetime}.opus"
+    file_name = f"Audio/voice_{current_datetime}.mp3"
     completion.stream_to_file(file_name)
     return file_name
     
+  def summary(self):
+    conversation = self.chat_history[1:]
+    conversation.append({"role": "user", "content": "Summarize the conversation to be a max of 1000 characters. Include the most important points."})
+    completion = self.client.chat.completions.create(
+      model=self.model,
+      messages=conversation,
+      temperature=.9
+    )
+    self.chat_history = []
+    self.chat_history.append(self.CHARACTER_PROMPT)
+    self.chat_history.append({"role": "user", "content": "Summarize the conversation to be a max of 1000 characters. Include the most important points."})
+    self.chat_history.append({"role": "assistant", "content": completion.choices[0].message.content})
